@@ -1251,7 +1251,7 @@
       /* ============================================================
    DATA
    ============================================================ */
-      const companies = [
+      const DEFAULT_COMPANIES = [
         {
           id: "fireblocks",
           name: "Fireblocks",
@@ -1376,9 +1376,29 @@
       ];
 
       /* ============================================================
+   PERSISTENCE
+   ============================================================ */
+      const STORAGE_KEY = 'mcg_companies';
+
+      function loadCompanies() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) return JSON.parse(saved);
+        } catch(e) {}
+        return DEFAULT_COMPANIES;
+      }
+
+      function saveCompanies() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(companies));
+        } catch(e) {}
+      }
+
+      /* ============================================================
    STATE
    ============================================================ */
-      let currentId = companies[0].id;
+      const companies = loadCompanies();
+      let currentId = companies[0]?.id || null;
       let deleteTarget = null;
       const expanded = {};
 
@@ -1629,6 +1649,7 @@
             const toIdx   = companies.findIndex(c => c.id === el.dataset.id);
             const [moved] = companies.splice(fromIdx, 1);
             companies.splice(toIdx, 0, moved);
+            saveCompanies();
             renderSidebar();
           });
         });
@@ -1728,6 +1749,7 @@
 
         deleteTarget = null;
         document.getElementById("del-overlay").classList.remove("open");
+        saveCompanies();
         render();
         if (name) showToast(`${name} removed`);
       }
@@ -1820,6 +1842,7 @@
           // Update existing
           const idx = companies.findIndex(c => c.id === editingId);
           if (idx !== -1) companies[idx] = readFormData(editingId);
+          saveCompanies();
           closeModal();
           render();
           showToast(`${name} updated`);
@@ -1827,6 +1850,7 @@
           // Add new
           const co = readFormData(null);
           companies.push(co);
+          saveCompanies();
           closeModal();
           setTimeout(() => {
             currentId = co.id;
