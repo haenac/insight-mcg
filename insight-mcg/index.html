@@ -1019,7 +1019,7 @@
       <div class="modal">
         <div class="modal-head">
           <div>
-            <div class="modal-title">Add New Company</div>
+            <div class="modal-title" id="modal-title">Add New Company</div>
             <div class="modal-sub">
               One item per line for list fields &nbsp;·&nbsp; Only Name is
               required
@@ -1063,6 +1063,16 @@
                 placeholder="One-line positioning statement"
               />
             </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Google Doc Link</label>
+            <input
+              type="url"
+              class="f-in"
+              id="f-doc"
+              placeholder="https://docs.google.com/document/d/..."
+            />
           </div>
 
           <div class="form-group">
@@ -1206,7 +1216,7 @@
           <button class="btn-cancel" type="button" onclick="closeModal()">
             Cancel
           </button>
-          <button class="btn-submit" type="submit" form="add-form">
+          <button class="btn-submit" type="submit" form="add-form" id="submit-btn">
             Add Company
           </button>
         </div>
@@ -1246,6 +1256,7 @@
           id: "fireblocks",
           name: "Fireblocks",
           tagline: "Digital Asset Infrastructure for the Institutional World",
+          doc_url: "",
           what_they_do: [
             "Full-stack digital asset infrastructure — store, transfer, manage, and trade crypto assets at institutional scale",
             "MPC (Multi-Party Computation) wallets: private keys are split cryptographically so no single person or system holds the complete key, eliminating single points of failure",
@@ -1522,6 +1533,18 @@
       <h1>${esc(co.name)}</h1>
       ${co.tagline ? `<div class="co-tagline">${esc(co.tagline)}</div>` : ""}
       <div class="header-actions">
+        <button class="btn-icon" onclick="openModal('${p}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit
+        </button>
+        ${co.doc_url ? `<a class="btn-icon" href="${esc(co.doc_url)}" target="_blank" rel="noopener noreferrer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          Google Doc
+        </a>` : ''}
         <button class="btn-icon" onclick="copyJSON('${p}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1712,12 +1735,74 @@
       /* ============================================================
    MODAL
    ============================================================ */
-      function openModal() {
+      let editingId = null;
+
+      // Serialize arrays/objects back to textarea text for editing
+      const serializeLines = arr => (arr || []).join('\n');
+      const serializeCustomers = arr => (arr || []).map(g => `${g.category}: ${g.examples.join(', ')}`).join('\n');
+      const serializeCompetitors = arr => (arr || []).map(c => `${c.name}: ${c.notes}`).join('\n');
+
+      function readFormData(existingId) {
+        const name = document.getElementById("f-name").value.trim();
+        return {
+          id: existingId || toId(name) + "-" + Date.now(),
+          name,
+          tagline:               document.getElementById("f-tagline").value.trim(),
+          doc_url:               document.getElementById("f-doc").value.trim(),
+          what_they_do:          parseLines(document.getElementById("f-what").value),
+          problem_solved:        parseLines(document.getElementById("f-problem").value),
+          customers:             parseCustomers(document.getElementById("f-customers").value),
+          feedback: {
+            pros:       parseLines(document.getElementById("f-pros").value),
+            cons:       parseLines(document.getElementById("f-cons").value),
+            source_url: document.getElementById("f-source").value.trim(),
+          },
+          market_attractiveness: parseLines(document.getElementById("f-market").value),
+          competitors:           parseCompetitors(document.getElementById("f-competitors").value),
+          competitive_position:  parseLines(document.getElementById("f-comppos").value),
+          future_outlook:        parseLines(document.getElementById("f-outlook").value),
+          ai_angle:              parseLines(document.getElementById("f-ai").value),
+          disruption_risks:      parseLines(document.getElementById("f-risks").value),
+          bull_case:             document.getElementById("f-bull").value.trim(),
+          bear_case:             document.getElementById("f-bear").value.trim(),
+        };
+      }
+
+      function openModal(id = null) {
+        editingId = id || null;
+        const isEdit = !!editingId;
+        document.getElementById("modal-title").textContent = isEdit ? "Edit Company" : "Add New Company";
+        document.getElementById("submit-btn").textContent  = isEdit ? "Save Changes" : "Add Company";
+        document.getElementById("add-form").reset();
+
+        if (isEdit) {
+          const co = companies.find(c => c.id === editingId);
+          if (!co) return;
+          document.getElementById("f-name").value        = co.name || '';
+          document.getElementById("f-tagline").value     = co.tagline || '';
+          document.getElementById("f-doc").value         = co.doc_url || '';
+          document.getElementById("f-what").value        = serializeLines(co.what_they_do);
+          document.getElementById("f-problem").value     = serializeLines(co.problem_solved);
+          document.getElementById("f-customers").value   = serializeCustomers(co.customers);
+          document.getElementById("f-pros").value        = serializeLines(co.feedback?.pros);
+          document.getElementById("f-cons").value        = serializeLines(co.feedback?.cons);
+          document.getElementById("f-source").value      = co.feedback?.source_url || '';
+          document.getElementById("f-market").value      = serializeLines(co.market_attractiveness);
+          document.getElementById("f-competitors").value = serializeCompetitors(co.competitors);
+          document.getElementById("f-comppos").value     = serializeLines(co.competitive_position);
+          document.getElementById("f-outlook").value     = serializeLines(co.future_outlook);
+          document.getElementById("f-ai").value          = serializeLines(co.ai_angle);
+          document.getElementById("f-risks").value       = serializeLines(co.disruption_risks);
+          document.getElementById("f-bull").value        = co.bull_case || '';
+          document.getElementById("f-bear").value        = co.bear_case || '';
+        }
+
         document.getElementById("overlay").classList.add("open");
         setTimeout(() => document.getElementById("f-name").focus(), 50);
       }
 
       function closeModal() {
+        editingId = null;
         document.getElementById("overlay").classList.remove("open");
         document.getElementById("add-form").reset();
       }
@@ -1731,50 +1816,25 @@
         const name = document.getElementById("f-name").value.trim();
         if (!name) return;
 
-        const co = {
-          id: toId(name) + "-" + Date.now(),
-          name,
-          tagline: document.getElementById("f-tagline").value.trim(),
-          what_they_do: parseLines(document.getElementById("f-what").value),
-          problem_solved: parseLines(
-            document.getElementById("f-problem").value,
-          ),
-          customers: parseCustomers(
-            document.getElementById("f-customers").value,
-          ),
-          feedback: {
-            pros: parseLines(document.getElementById("f-pros").value),
-            cons: parseLines(document.getElementById("f-cons").value),
-            source_url: document.getElementById("f-source").value.trim(),
-          },
-          market_attractiveness: parseLines(
-            document.getElementById("f-market").value,
-          ),
-          competitors: parseCompetitors(
-            document.getElementById("f-competitors").value,
-          ),
-          competitive_position: parseLines(
-            document.getElementById("f-comppos").value,
-          ),
-          future_outlook: parseLines(
-            document.getElementById("f-outlook").value,
-          ),
-          ai_angle: parseLines(document.getElementById("f-ai").value),
-          disruption_risks: parseLines(
-            document.getElementById("f-risks").value,
-          ),
-          bull_case: document.getElementById("f-bull").value.trim(),
-          bear_case: document.getElementById("f-bear").value.trim(),
-        };
-
-        companies.push(co);
-        closeModal();
-        setTimeout(() => {
-          currentId = co.id;
+        if (editingId) {
+          // Update existing
+          const idx = companies.findIndex(c => c.id === editingId);
+          if (idx !== -1) companies[idx] = readFormData(editingId);
+          closeModal();
           render();
-          document.getElementById("main").scrollTop = 0;
-          showToast(`${name} added`);
-        }, 100);
+          showToast(`${name} updated`);
+        } else {
+          // Add new
+          const co = readFormData(null);
+          companies.push(co);
+          closeModal();
+          setTimeout(() => {
+            currentId = co.id;
+            render();
+            document.getElementById("main").scrollTop = 0;
+            showToast(`${name} added`);
+          }, 100);
+        }
       }
 
       /* ============================================================
